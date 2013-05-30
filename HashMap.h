@@ -86,8 +86,11 @@ public:
         int iSize;
     
         static int getTableNumber(const K& obj) {
-            return H::hashCode(obj) % iTableNum;
+            int hash = H::hashCode(obj) % iTableNum;
+            if(hash < 0) hash += iTableNum;
+            return hash;
         }
+    
 public:
     class Iterator
     {
