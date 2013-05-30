@@ -55,31 +55,34 @@ public:
             key = k;
             value = v;
         }
-
-        K getKey() const
+        Entry(){}
+        void setValue(const V& v){
+            value = v;
+        }
+        
+        const K& getKey() const
         {
             return key;
         }
 
-        V getValue() const
+        const V& getValue() const
         {
             return value;
         }
     };
     private:
         struct Node{
-            K key;
-            V value;
+            Entry data;
             Node* next;
             Node* pre;
             Node(const K& k, const V& v, Node* p = NULL, Node* n = NULL)
-            :key(k), value(v), pre(p), next(n){
+            :data(k,v), pre(p), next(n){
             if(pre == NULL) pre = this;
             if(next == NULL) next = this;
             }
             Node():pre(this),next(this){}
         }**iHashTable;
-        static const int iTableNum = 32;
+        static const int iTableNum = 99971;
         int iSize;
         Node* add(const K& k, const V& v, Node* where){
             ++iSize;
@@ -135,7 +138,7 @@ public:
         const Entry &next() {
             if(!hasNext()) throw ElementNotExist();
             ++position;
-            return Entry(pNode[position]->key,pNode[position]->value);
+            return pNode[position]->data;
         }
     };
   
@@ -155,6 +158,8 @@ public:
      */
     ~HashMap() {
         clear();
+        for( int i=0; i<iTableNum; ++i )
+            delete iHashTable[i];
         delete[] iHashTable;
     }
 
@@ -210,7 +215,7 @@ public:
     bool containsKey(const K &key) const {
         int iTable = getTableNumber(key);
         for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
-            if(tmp->key == key){
+            if(tmp->data.getKey() == key){
                 return true;
             }
         }
@@ -235,8 +240,8 @@ public:
     const V &get(const K &key) const {
         int iTable = getTableNumber(key);
         for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
-            if(tmp->key == key){
-                return tmp->value;
+            if(tmp->data.getKey() == key){
+                return tmp->data.getValue();
             }
         }
         throw ElementNotExist();
@@ -255,8 +260,8 @@ public:
     void put(const K &key, const V &value) {
         int iTable = getTableNumber(key);
         for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
-            if(tmp->key == key){
-                tmp->value = value;
+            if(tmp->data.getKey() == key){
+                tmp->data.setValue(value);
                 return;
             }
         }
@@ -271,7 +276,7 @@ public:
     void remove(const K &key) {
         int iTable = getTableNumber(key);
         for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
-            if(tmp->key == key){
+            if(tmp->data.getKey() == key){
                 remove(tmp);
                 return;
             }
