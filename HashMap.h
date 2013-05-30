@@ -3,6 +3,9 @@
 #ifndef __HASHMAP_H
 #define __HASHMAP_H
 
+#include <iostream>
+using namespace std;
+
 #include "ElementNotExist.h"
 
 /**
@@ -74,31 +77,14 @@ public:
         struct Node{
             Entry data;
             Node* next;
-            Node* pre;
-            Node(const K& k, const V& v, Node* p = NULL, Node* n = NULL)
-            :data(k,v), pre(p), next(n){
-            if(pre == NULL) pre = this;
-            if(next == NULL) next = this;
-            }
-            Node():pre(this),next(this){}
+            Node():next(NULL){}
+            Node(const K& key,const V& value)
+            :data(key,value),next(NULL){}
         }**iHashTable;
+    
         static const int iTableNum = 99971;
         int iSize;
-        Node* add(const K& k, const V& v, Node* where){
-            ++iSize;
-            Node *tmp = new Node(k, v, where, where->next);
-            tmp->pre->next = tmp;
-            tmp->next->pre = tmp;
-            return tmp;
-        }
-        Node* remove(Node* where){
-            --iSize;
-            where->pre->next = where->next;
-            where->next->pre = where->pre;
-            Node *tmp = where->next;
-            delete where;
-            return tmp;
-        }
+    
         static int getTableNumber(const K& obj) {
             return H::hashCode(obj) % iTableNum;
         }
@@ -107,28 +93,24 @@ public:
     {
     private:
         const HashMap* pHashMap;
-        int iSize;
-        int position;
-        Node** pNode;
+        int iTable;
+        Node* pNode;
     public:
         Iterator(const HashMap* parHashMap)
-        :pHashMap(parHashMap), position(-1), iSize(0){
-            pNode = new Node*[parHashMap->iSize];
-            for(int i=0; i<parHashMap->iTableNum; ++i){
-                for(Node* tmp = (parHashMap->iHashTable[i])->next; tmp != parHashMap->iHashTable[i]; tmp = tmp->next){
-                    pNode[iSize] = tmp;
-                    ++iSize;
-                }
-            }
+            :pHashMap(parHashMap),iTable(0){
+            pNode = pHashMap->iHashTable[0];
         }
-        ~Iterator(){
-            delete[] pNode;
-        }
+
         /**
          * TODO Returns true if the iteration has more elements.
          */
         bool hasNext() {
-            return (position < iSize - 1);
+            if(pNode->next != NULL) return true;
+            for (int i = iTable + 1; i < pHashMap->iTableNum; ++i)
+            {
+                if(pHashMap->iHashTable[i]->next != NULL) return true;
+            }
+            return false;
         }
 
         /**
@@ -137,11 +119,19 @@ public:
          */
         const Entry &next() {
             if(!hasNext()) throw ElementNotExist();
-            ++position;
-            return pNode[position]->data;
+            if(pNode->next != NULL){
+                pNode = pNode->next;
+                return pNode->data;
+            }
+            for( int i = iTable + 1; i < pHashMap->iTableNum; ++i )
+                if(pHashMap->iHashTable[i]->next != NULL){
+                    pNode = pHashMap->iHashTable[i]->next;
+                    iTable = i;
+                    return pNode->data;
+                }
         }
     };
-  
+    
     /**
      * TODO Constructs an empty hash map.
      */
@@ -203,10 +193,15 @@ public:
      */
     void clear() {
         for(int i=0; i<iTableNum; ++i){
-            for(Node *tmp = iHashTable[i]->next; tmp != iHashTable[i];){
-                tmp = remove(tmp);
+            for(Node *pos = iHashTable[i]->next, *tmp; pos != NULL;)
+            {
+                tmp = pos;
+                pos = pos->next;
+                delete tmp;
             }
+            iHashTable[i]->next = NULL;
         }
+        iSize = 0;
     }
 
     /**
@@ -214,7 +209,7 @@ public:
      */
     bool containsKey(const K &key) const {
         int iTable = getTableNumber(key);
-        for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
+        for(Node *tmp = iHashTable[iTable]->next; tmp != NULL; tmp = tmp->next){
             if(tmp->data.getKey() == key){
                 return true;
             }
@@ -239,7 +234,7 @@ public:
      */
     const V &get(const K &key) const {
         int iTable = getTableNumber(key);
-        for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
+        for(Node *tmp = iHashTable[iTable]->next; tmp != NULL; tmp = tmp->next){
             if(tmp->data.getKey() == key){
                 return tmp->data.getValue();
             }
@@ -259,13 +254,16 @@ public:
      */
     void put(const K &key, const V &value) {
         int iTable = getTableNumber(key);
-        for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
+        for(Node *tmp = iHashTable[iTable]->next; tmp != NULL; tmp = tmp->next){
             if(tmp->data.getKey() == key){
                 tmp->data.setValue(value);
                 return;
             }
         }
-        add(key,value,iHashTable[iTable]);
+        Node *data = new Node(key,value);
+        data->next = iHashTable[iTable]->next;
+        iHashTable[iTable]->next = data;
+        ++iSize;
     }
 
     /**
@@ -275,9 +273,11 @@ public:
      */
     void remove(const K &key) {
         int iTable = getTableNumber(key);
-        for(Node *tmp = iHashTable[iTable]->next; tmp != iHashTable[iTable]; tmp = tmp->next){
-            if(tmp->data.getKey() == key){
-                remove(tmp);
+        for(Node *pos = iHashTable[iTable]->next, *tmp = iHashTable[iTable]; pos != NULL; tmp = pos, pos = pos->next){
+            if(pos->data.getKey() == key){
+                tmp->next = pos->next;
+                delete pos;
+                --iSize;
                 return;
             }
         }
