@@ -13,15 +13,42 @@
 template<class K, class V>
 class TreeMap
 {
+public:
+    class Entry
+    {
+        K key;
+        V value;
+    public:
+        Entry(const K& k, const V& v)
+        {
+            key = k;
+            value = v;
+        }
+        
+        void setValue(const V& v){
+            value = v;
+        }
+        
+        const K& getKey() const
+        {
+            return key;
+        }
+        
+        const V& getValue() const
+        {
+            return value;
+        }
+    };
+    
     struct TreapNode{
         TreapNode* lf;
         TreapNode* rt;
-        K key;
-        V value;
+        Entry data;
         int fix;
         TreapNode(const K& k, const V& v)
-        :key(k),value(v),fix(rand()),lf(NULL),rt(NULL){}
+        :data(k,v),fix(rand()),lf(NULL),rt(NULL){}
     };
+    
 private:
     TreapNode *TreapRoot;
     int iSize;
@@ -41,9 +68,10 @@ private:
         if(root == NULL){
             root = new TreapNode(key,value);
             ++iSize;
+            return;
         }
-        else if (root->key == key) root->value = value;
-        else if (key < root->key){
+        else if (root->data.getKey() == key) root->data.setValue(value);
+        else if (key < root->data.getKey()){
             insert(key,value,root->lf);
             if(root->lf->fix > root->fix) rot_rt(root);
         }
@@ -52,22 +80,24 @@ private:
             if(root->rt->fix > root->fix) rot_lf(root);
         }
     }
+    
     bool remove(const K& key,TreapNode *&root){
         if(root == NULL) return false;
-        else if (key < root->key) return remove(key, root->lf);
-        else if (key > root->key) return remove(key, root->rt);
+        else if (key < root->data.getKey()) return remove(key, root->lf);
+        else if (key > root->data.getKey()) return remove(key, root->rt);
         else{
-            --iSize;
             if(root->rt == NULL){
                 TreapNode *tmp = root;
                 root = root->lf;
                 delete tmp;
+                --iSize;
                 return true;
             }
             else if(root->lf == NULL){
                 TreapNode *tmp = root;
                 root = root->rt;
                 delete tmp;
+                --iSize;
                 return true;
             }
             else if(root->lf->fix > root->rt->fix){
@@ -80,71 +110,71 @@ private:
             }
         }
     }
+    
     const V& get(const K& key,TreapNode *root) const{
         if(root == NULL) throw ElementNotExist();
-        else if(key < root->key) return get(key, root->lf);
-        else if(key > root->key) return get(key, root->rt);
-        else return root->value;
+        else if(key < root->data.getKey()) return get(key, root->lf);
+        else if(key > root->data.getKey()) return get(key, root->rt);
+        else return root->data.getValue();
     }
+    
     bool contain(const K& key, TreapNode *root) const{
         if(root == NULL) return false;
-        if(key < root->key) return contain(key,root->lf);
-        if(key > root->key) return contain(key,root->rt);
+        if(key < root->data.getKey()) return contain(key,root->lf);
+        if(key > root->data.getKey()) return contain(key,root->rt);
         return true;
     }
+    
+    void removeTree(TreapNode *&root){
+        if(root == NULL) return;
+        removeTree(root->lf);
+        removeTree(root->rt);
+        TreapNode *tmp = root;
+        root = NULL;
+        delete tmp;
+    }
+    
 public:
-    class Entry
-    {
-        K key;
-        V value;
-    public:
-        Entry(K k, V v)
-        {
-            key = k;
-            value = v;
+    void copyTree(TreapNode *&destination, const TreapNode *source){
+        if(source == NULL) return;
+        destination = new TreapNode(source->data.getKey(),source->data.getValue());
+        destination->fix = source->fix;
+        copyTree(destination->lf,source->lf);
+        copyTree(destination->rt,source->rt);
+    }
+    
+    TreapNode* findNode(const K& key, TreapNode *root) const{
+        if(root == NULL) return NULL;
+        if(key >= root->data.getKey()) return findNode(key,root->rt);
+        else{
+            TreapNode *tmp = findNode(key,root->lf);
+            if(tmp != NULL) return tmp;
+            return root;
         }
-        
-        K getKey() const
-        {
-            return key;
-        }
-        
-        V getValue() const
-        {
-            return value;
-        }
-    };
+    }
+
+    TreapNode* findMin(TreapNode *root) const{
+        if(root == NULL) return NULL;
+        if(root->lf != NULL) return findMin(root->lf);
+        return root;
+    }
     
     class Iterator
     {
     private:
-        const TreeMap<K,V> *pTreeMap;
-        TreapNode **pNode;
-        int iSize;
-        int position;
-        void makelist(int &num,TreapNode *root){
-            if(root == NULL) return;
-            pNode[iSize] = root;
-            ++iSize;
-            makelist(iSize,root->lf);
-            makelist(iSize,root->rt);
-        }
+        const TreeMap *pTreeMap;
+        bool flag;
+        K key;
     public:
-        Iterator(const TreeMap *in_TreeMap)
-        :pTreeMap(in_TreeMap),iSize(0),position(-1){
-            pNode = new TreapNode*[pTreeMap->iSize];
-            makelist(iSize,pTreeMap->TreapRoot);
-        }
-        ~Iterator(){
-            delete[] pNode;
-        }
+        Iterator(const TreeMap* parTreeMap)
+        :pTreeMap(parTreeMap),flag(false){}
         /**
          * TODO Returns true if the iteration has more elements.
          */
         bool hasNext() {
-            if(position == iSize - 1) return false;
-            return true;
-        }
+            if (pTreeMap->TreapRoot == NULL) return false;
+            return (!flag || pTreeMap->findNode(key, pTreeMap->TreapRoot) != NULL);
+            }
         
         /**
          * TODO Returns the next element in the iteration.
@@ -152,8 +182,12 @@ public:
          */
         const Entry &next() {
             if(!hasNext()) throw ElementNotExist();
-            position++;
-            return Entry(pNode[position]->key,pNode[position]->value);
+            TreapNode *tmp;
+            if(!flag) tmp = pTreeMap->findMin(pTreeMap->TreapRoot);
+            else tmp = pTreeMap->findNode(key,pTreeMap->TreapRoot);
+            key = tmp->data.getKey();
+            flag = true;
+            return tmp->data;
         }
     };
     
@@ -161,16 +195,13 @@ public:
      * TODO Constructs an empty tree map.
      */
     TreeMap()
-    :iSize(0),TreapRoot(NULL){
-        srand(time(NULL));
-    }
+    :iSize(0),TreapRoot(NULL){}
     
     /**
      * TODO Destructor
      */
     ~TreeMap() {
-        while (TreapRoot != NULL)
-            remove(TreapRoot->key,TreapRoot);
+        removeTree(TreapRoot);
     }
     
     /**
@@ -178,12 +209,9 @@ public:
      */
     TreeMap &operator=(const TreeMap &x) {
         if(this == &x) return *this;
-        while (TreapRoot != NULL)
-            remove(TreapRoot->key,TreapRoot);
-            for(Iterator itr = x.iterator(); itr.hasNext();){
-                Entry tmp = itr.next();
-                put(tmp.getKey(), tmp.getValue());
-            }
+        removeTree(TreapRoot);
+        iSize = x.iSize;
+        copyTree(TreapRoot,x.TreapRoot);
         return *this;
     }
     
@@ -191,11 +219,8 @@ public:
      * TODO Copy-constructor
      */
     TreeMap(const TreeMap &x)
-    :iSize(0),TreapRoot(NULL) {
-        for(Iterator itr = x.iterator(); itr.hasNext();){
-            Entry tmp = itr.next();
-            put(tmp.getKey(), tmp.getValue());
-        }
+    :iSize(x.iSize),TreapRoot(NULL) {
+        copyTree(TreapRoot,x.TreapRoot);
     }
     /**
      * TODO Returns an iterator over the elements in this map.
@@ -208,8 +233,8 @@ public:
      * TODO Removes all of the mappings from this map.
      */
     void clear() {
-        while (!isEmpty())
-            remove(TreapRoot->key,TreapRoot);
+        iSize = 0;
+        removeTree(TreapRoot);
     }
     
     /**
@@ -243,7 +268,7 @@ public:
      * TODO Returns true if this map contains no key-value mappings.
      */
     bool isEmpty() const {
-        return (TreapRoot==NULL);
+        return !iSize;
     }
     
     /**
