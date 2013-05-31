@@ -33,7 +33,6 @@ private:
 public:
     class Iterator
     {
-        friend class ArrayList;
     private:
         int position;
         ArrayList *pArray;
@@ -80,8 +79,7 @@ public:
      *  Constructs an empty array list.
      */
     ArrayList()
-    :iSize(0){
-        iCapacity = 32;
+    :iSize(0),iCapacity(128){
         iStorage = new T[iCapacity];
     }
     
@@ -98,11 +96,11 @@ public:
     ArrayList& operator=(const ArrayList& x) {
         if(this == &x) return *this;
         delete[] iStorage;
-        iCapacity = x.capacity;
-        iSize = x.current_size;
+        iCapacity = x.iCapacity;
+        iSize = x.iSize;
         iStorage = new T[iCapacity];
         for (int i=0;i<iSize;++i)
-            iStorage[i] = x.storage[i];
+            iStorage[i] = x.iStorage[i];
         return *this;
     }
     
@@ -134,6 +132,7 @@ public:
      * @throw IndexOutOfBound
      */
     void add(int index, const T& element) {
+        if(index < 0 || index > iSize) throw IndexOutOfBound();
         autoSpace();
         for(int i=iSize;i>index;--i)
             iStorage[i] = iStorage[i-1];
@@ -145,17 +144,14 @@ public:
      *  Removes all of the elements from this list.
      */
     void clear() {
-        delete[] iStorage;
         iSize = 0;
-        iCapacity = 32;
-        iStorage = new T[iCapacity];
     }
     
     /**
      *  Returns true if this list contains the specified element.
      */
     bool contains(const T& e) const {
-        for(int i=0;i<iSize;++i)
+        for(int i=0; i<iSize; ++i)
             if(iStorage[i] == e)
                 return true;
         return false;
@@ -167,7 +163,7 @@ public:
      * @throw IndexOutOfBound
      */
     const T& get(int index) const {
-        if(index >= iSize) throw IndexOutOfBound();
+        if(index < 0 || index >= iSize) throw IndexOutOfBound();
         return iStorage[index];
     }
     
@@ -175,7 +171,7 @@ public:
      *  Returns true if this list contains no elements.
      */
     bool isEmpty() const {
-        return (!iSize);
+        return !iSize;
     }
     
     /**
@@ -184,7 +180,7 @@ public:
      * @throw IndexOutOfBound
      */
     void removeIndex(int index) {
-        if(index >= iSize) throw IndexOutOfBound();
+        if(index < 0 || index >= iSize) throw IndexOutOfBound();
         for (int i=index;i<iSize-1;++i)
             iStorage[i] = iStorage[i+1];
         --iSize;
@@ -195,8 +191,7 @@ public:
      * Returns true if it was present in the list, otherwise false.
      */
     bool remove(const T &e) {
-        int p;
-        for(p=0;p<iSize;++p)
+        for(int p=0; p<iSize; ++p)
             if(iStorage[p] == e){
                 removeIndex(p);
                 return true;
@@ -210,7 +205,7 @@ public:
      * @throw IndexOutOfBound
      */
     void set(int index, const T &element) {
-        if(index >= iSize) throw IndexOutOfBound();
+        if(index < 0 || index >= iSize) throw IndexOutOfBound();
         iStorage[index] = element;
     }
     

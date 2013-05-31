@@ -26,7 +26,6 @@ class LinkedList
     };
 private:
     Node *head;
-    Node *tail;
     int iSize;
     Node* add(Node *parNode, const T& parData){
         ++iSize;
@@ -47,20 +46,18 @@ public:
     class Iterator
     {
     private:
-        LinkedList *const storage;
-        Node *position;
+        LinkedList* pLinkedList;
+        Node *pNode;
     public:
-        Iterator(LinkedList *const in_Linklist)
-        :storage(in_Linklist){
-            position = storage->head;
-            
+        Iterator(LinkedList* const parLinkedList)
+        :pLinkedList(parLinkedList){
+            pNode = pLinkedList->head;
         }
         /**
          * TODO Returns true if the iteration has more elements.
          */
         bool hasNext() {
-            if(position->next == storage->head) return false;
-            return true;
+            return (pNode->next != pLinkedList->head);
         }
         
         /**
@@ -69,8 +66,8 @@ public:
          */
         const T &next() {
             if(!hasNext()) throw ElementNotExist();
-            position = position->next;
-            return position->data;
+            pNode = pNode->next;
+            return pNode->data;
         }
         
         /**
@@ -82,9 +79,10 @@ public:
          * @throw ElementNotExist
          */
         void remove() {
-            if(position == storage->head)
+            if(pNode == pLinkedList->head)
                 throw ElementNotExist();
-            position = storage->remove(position);
+            pNode = pLinkedList->remove(pNode);
+            pNode = pNode->pre;
         }
     };
     
@@ -157,7 +155,7 @@ public:
      * @throw IndexOutOfBound
      */
     void add(int index, const T& element) {
-        if(index > iSize) throw IndexOutOfBound();
+        if(index < 0 || index > iSize) throw IndexOutOfBound();
         Node  *tmp = head;
         while(index--) tmp = tmp->next;
         add(tmp,element);
@@ -187,7 +185,7 @@ public:
      * @throw IndexOutOfBound
      */
     const T& get(int index) const {
-        if(index >= iSize) throw IndexOutOfBound();
+        if(index < 0 || index >= iSize) throw IndexOutOfBound();
         Node *tmp = head->next;
         while(index--){
             tmp = tmp->next;
@@ -226,7 +224,7 @@ public:
      * @throw IndexOutOfBound
      */
     void removeIndex(int index) {
-        if(index >= iSize) throw IndexOutOfBound();
+        if(index < 0 || index >= iSize) throw IndexOutOfBound();
         Node *tmp = head->next;
         while(index--){
             tmp = tmp->next;
@@ -274,7 +272,7 @@ public:
      * @throw IndexOutOfBound
      */
     void set(int index, const T &element) {
-        if(index >= iSize) throw IndexOutOfBound();
+        if(index < 0 || index >= iSize) throw IndexOutOfBound();
         Node *tmp = head->next;
         while(index--)
             tmp = tmp->next;
